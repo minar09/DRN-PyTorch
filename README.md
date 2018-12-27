@@ -179,8 +179,7 @@ python3 segment.py train -d <data_folder> -c 19 -s 840 --arch drn_d_105 --random
 
 Our case:
 ```
-python segment.py train -d E:/Dataset/Dataset10k/images/training/ -c 18 -s 840 --arch drn_d_105 --random-scale 2 --random-rotate 10 --batch-size 16 --epochs 50 --lr 0.001 --momentum 0.9 -j 16 --lr-mode poly --bn-sync
-
+python segment.py train
 ```
 
 Note:
