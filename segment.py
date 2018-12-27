@@ -151,10 +151,12 @@ class SegList(torch.utils.data.Dataset):
     def read_lists(self):
         image_path = self.data_dir
         label_path = self.data_dir.replace("images", "annotations")
-        self.image_list = [filename for filename in glob.glob(image_path + '*.jpg')]
-        self.label_list = [filename for filename in glob.glob(label_path + '*.png')]
+        self.image_list = [
+            filename for filename in glob.glob(image_path + '*.jpg')]
+        self.label_list = [
+            filename for filename in glob.glob(label_path + '*.png')]
         assert len(self.image_list) == len(self.label_list)
-        
+
 
 class SegListMS(torch.utils.data.Dataset):
     def __init__(self, data_dir, phase, transforms, scales, list_dir=None):
@@ -189,8 +191,10 @@ class SegListMS(torch.utils.data.Dataset):
     def read_lists(self):
         image_path = self.data_dir
         label_path = self.data_dir.replace("images", "annotations")
-        self.image_list = [filename for filename in glob.glob(image_path + '*.jpg')]
-        self.label_list = [filename for filename in glob.glob(label_path + '*.png')]
+        self.image_list = [
+            filename for filename in glob.glob(image_path + '*.jpg')]
+        self.label_list = [
+            filename for filename in glob.glob(label_path + '*.png')]
         assert len(self.image_list) == len(self.label_list)
 
 
@@ -203,44 +207,58 @@ def validate(val_loader, model, criterion, eval_score=None, print_freq=10):
     model.eval()
 
     end = time.time()
+
     for i, (input, target) in enumerate(val_loader):
-        if type(criterion) in [torch.nn.modules.loss.L1Loss,
-                               torch.nn.modules.loss.MSELoss]:
-            target = target.float()
-        input = input.cuda()
-        target = target.cuda(async=True)
-        input_var = torch.autograd.Variable(input, volatile=True)
-        target_var = torch.autograd.Variable(target, volatile=True)
+        try:
+            if type(criterion) in [torch.nn.modules.loss.L1Loss,
+                                   torch.nn.modules.loss.MSELoss]:
+                target = target.float()
+            input = input.cuda()
+            target = target.cuda(async=True)
+            input_var = torch.autograd.Variable(input, volatile=True)
+            target_var = torch.autograd.Variable(target, volatile=True)
 
-        # compute output
-        output = model(input_var)[0]
-        loss = criterion(output, target_var)
+            # compute output
+            output = model(input_var)[0]
+            loss = criterion(output, target_var)
 
-        # measure accuracy and record loss
-        # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.item(), input.size(0))
-        if eval_score is not None:
-            score.update(eval_score(output, target_var), input.size(0))
+            # measure accuracy and record loss
+            # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+            losses.update(loss.item(), input.size(0))
+            if eval_score is not None:
+                score.update(eval_score(output, target_var), input.size(0))
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-        if i % print_freq == 0:
-            logger.info('Test: [{0}/{1}]\t'
-                        'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                        'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                        'Score {score.val:.3f} ({score.avg:.3f})'.format(
-                i, len(val_loader), batch_time=batch_time, loss=losses,
-                score=score))
+            if i % print_freq == 0:
+                logger.info('Test: [{0}/{1}]\t'
+                            'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                            'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                            'Score {score.val:.3f} ({score.avg:.3f})'.format(
+                                i, len(val_loader), batch_time=batch_time, loss=losses,
+                                score=score))
+
+        except Exception as err:
+            print(err)
 
     logger.info(' * Score {top1.avg:.3f}'.format(top1=score))
+
+    # Writing to log file
+    try:
+        with open('val_results.txt', 'w') as file:
+            file.write('Loss {loss.avg:.4f} * Score {top1.avg:.3f} Time {batch_time.avg:.3f}'.format(
+                loss=losses, top1=score, batch_time=batch_time))
+    except Exception as err:
+        print(err)
 
     return score.avg
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -283,45 +301,62 @@ def train(train_loader, model, criterion, optimizer, epoch,
     end = time.time()
 
     for i, (input, target) in enumerate(train_loader):
-        # measure data loading time
-        data_time.update(time.time() - end)
+        try:
+            # measure data loading time
+            data_time.update(time.time() - end)
 
-        if type(criterion) in [torch.nn.modules.loss.L1Loss,
-                               torch.nn.modules.loss.MSELoss]:
-            target = target.float()
+            if type(criterion) in [torch.nn.modules.loss.L1Loss,
+                                   torch.nn.modules.loss.MSELoss]:
+                target = target.float()
 
-        input = input.cuda()
-        target = target.cuda(async=True)
-        input_var = torch.autograd.Variable(input)
-        target_var = torch.autograd.Variable(target)
+            input = input.cuda()
+            target = target.cuda(async=True)
+            input_var = torch.autograd.Variable(input)
+            target_var = torch.autograd.Variable(target)
 
-        # compute output
-        output = model(input_var)[0]
-        loss = criterion(output, target_var)
+            # compute output
+            output = model(input_var)[0]
+            loss = criterion(output, target_var)
 
-        # measure accuracy and record loss
-        # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.item(), input.size(0))
-        if eval_score is not None:
-            scores.update(eval_score(output, target_var), input.size(0))
+            # measure accuracy and record loss
+            # prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+            losses.update(loss.item(), input.size(0))
+            if eval_score is not None:
+                scores.update(eval_score(output, target_var), input.size(0))
 
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # compute gradient and do SGD step
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-        if i % print_freq == 0:
-            logger.info('Epoch: [{0}][{1}/{2}]\t'
-                        'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                        'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                        'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                        'Score {top1.val:.3f} ({top1.avg:.3f})'.format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses, top1=scores))
+            if i % print_freq == 0:
+                logger.info('Epoch: [{0}][{1}/{2}]\t'
+                            'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                            'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                            'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                            'Score {top1.val:.3f} ({top1.avg:.3f})'.format(
+                                epoch, i, len(train_loader), batch_time=batch_time,
+                                data_time=data_time, loss=losses, top1=scores))
+
+        except Exception as err:
+            print(err)
+
+    # Writing to log file
+    try:
+        with open('train_results.txt', 'w') as file:
+            file.write('Epoch: [{0}]\t'
+                       'Time ({batch_time.avg:.3f})\t'
+                       'Data ({data_time.avg:.3f})\t'
+                       'Loss ({loss.avg:.4f})\t'
+                       'Score ({top1.avg:.3f})'.format(
+                           epoch, batch_time=batch_time,
+                           data_time=data_time, loss=losses, top1=scores))
+    except Exception as err:
+        print(err)
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
@@ -352,9 +387,9 @@ def train_seg(args):
     # Data loading code
     train_dir = 'E:/Dataset/Dataset10k/images/training/'
     val_dir = 'E:/Dataset/Dataset10k/images/validation/'
-    
+
     args.data_dir = train_dir
-    
+
     info = json.load(open('info.json', 'r'))
     normalize = transforms.Normalize(mean=info['mean'],
                                      std=info['std'])
@@ -413,6 +448,7 @@ def train_seg(args):
     for epoch in range(start_epoch, args.epochs):
         lr = adjust_learning_rate(args, optimizer, epoch)
         logger.info('Epoch: [{0}]\tlr {1:.06f}'.format(epoch, lr))
+
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch,
               eval_score=accuracy)
@@ -476,17 +512,17 @@ def save_output_images(predictions, filenames, output_dir):
 
 
 def save_colorful_images(predictions, filenames, output_dir, palettes):
-   """
-   Saves a given (B x C x H x W) into an image file.
-   If given a mini-batch tensor, will save the tensor as a grid of images.
-   """
-   for ind in range(len(filenames)):
-       im = Image.fromarray(palettes[predictions[ind].squeeze()])
-       fn = os.path.join(output_dir, filenames[ind][:-4] + '.png')
-       out_dir = split(fn)[0]
-       if not exists(out_dir):
-           os.makedirs(out_dir)
-       im.save(fn)
+    """
+    Saves a given (B x C x H x W) into an image file.
+    If given a mini-batch tensor, will save the tensor as a grid of images.
+    """
+    for ind in range(len(filenames)):
+        im = Image.fromarray(palettes[predictions[ind].squeeze()])
+        fn = os.path.join(output_dir, filenames[ind][:-4] + '.png')
+        out_dir = split(fn)[0]
+        if not exists(out_dir):
+            os.makedirs(out_dir)
+        im.save(fn)
 
 
 def test(eval_data_loader, model, num_classes,
@@ -519,7 +555,7 @@ def test(eval_data_loader, model, num_classes,
                     'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                     .format(iter, len(eval_data_loader), batch_time=batch_time,
                             data_time=data_time))
-    if has_gt: #val
+    if has_gt:  # val
         ious = per_class_iu(hist) * 100
         logger.info(' '.join('{:.03f}'.format(i) for i in ious))
         return round(np.nanmean(ious), 2)
@@ -605,18 +641,18 @@ def test_ms(eval_data_loader, model, num_classes, scales,
                     'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                     .format(iter, len(eval_data_loader), batch_time=batch_time,
                             data_time=data_time))
-    if has_gt: #val
+    if has_gt:  # val
         ious = per_class_iu(hist) * 100
         logger.info(' '.join('{:.03f}'.format(i) for i in ious))
         return round(np.nanmean(ious), 2)
 
 
 def test_seg(args):
-    
+
     val_dir = 'E:/Dataset/Dataset10k/images/validation/'
-    
+
     args.data_dir = val_dir
-    
+
     batch_size = args.batch_size
     num_workers = args.workers
     phase = args.phase
@@ -662,7 +698,7 @@ def test_seg(args):
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             logger.info("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
+                        .format(args.resume, checkpoint['epoch']))
         else:
             logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
@@ -687,7 +723,8 @@ def parse_args():
     # Training settings
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('cmd', choices=['train', 'test'])
-    parser.add_argument('-d', '--data-dir', default='E:/Dataset/Dataset10k/images/training/')
+    parser.add_argument('-d', '--data-dir',
+                        default='E:/Dataset/Dataset10k/images/training/')
     parser.add_argument('-l', '--list-dir', default='E:/Dataset/Dataset10k/list/',
                         help='List dir to look for train_images.txt etc. '
                              'It is the same with --data-dir if not set.')
@@ -697,7 +734,7 @@ def parse_args():
     parser.add_argument('--arch', default='drn_d_105')
     parser.add_argument('--batch-size', type=int, default=1, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--epochs', type=int, default=30, metavar='N',
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.01)')

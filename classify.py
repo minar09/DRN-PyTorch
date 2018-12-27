@@ -19,8 +19,8 @@ import torchvision.datasets as datasets
 import drn as models
 
 model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+                     if name.islower() and not name.startswith("__")
+                     and callable(models.__dict__[name]))
 
 
 def parse_args():
@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument('--arch', '-a', metavar='ARCH', default='drn18',
                         choices=model_names,
                         help='model architecture: ' +
-                            ' | '.join(model_names) +
-                            ' (default: drn18)')
+                        ' | '.join(model_names) +
+                        ' (default: drn18)')
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
     parser.add_argument('--epochs', default=90, type=int, metavar='N',
@@ -60,8 +60,10 @@ def parse_args():
     parser.add_argument('--lr-adjust', dest='lr_adjust',
                         choices=['linear', 'step'], default='step')
     parser.add_argument('--crop-size', dest='crop_size', type=int, default=224)
-    parser.add_argument('--scale-size', dest='scale_size', type=int, default=256)
-    parser.add_argument('--step-ratio', dest='step_ratio', type=float, default=0.1)
+    parser.add_argument('--scale-size', dest='scale_size',
+                        type=int, default=256)
+    parser.add_argument('--step-ratio', dest='step_ratio',
+                        type=float, default=0.1)
     args = parser.parse_args()
     return args
 
@@ -242,8 +244,8 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, top1=top1, top5=top5))
+                      epoch, i, len(train_loader), batch_time=batch_time,
+                      data_time=data_time, loss=losses, top1=top1, top5=top5))
 
 
 def validate(args, val_loader, model, criterion):
@@ -281,8 +283,8 @@ def validate(args, val_loader, model, criterion):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                   i, len(val_loader), batch_time=batch_time, loss=losses,
-                   top1=top1, top5=top5))
+                      i, len(val_loader), batch_time=batch_time, loss=losses,
+                      top1=top1, top5=top5))
 
     print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
@@ -298,6 +300,7 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
