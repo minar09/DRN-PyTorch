@@ -108,7 +108,7 @@ class Bottleneck(nn.Module):
 
 class DRN(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000,
+    def __init__(self, block, layers, num_classes=18,
                  channels=(16, 32, 64, 128, 256, 512, 512, 512),
                  out_map=False, out_middle=False, pool_size=28, arch='D'):
         super(DRN, self).__init__()

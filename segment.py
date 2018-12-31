@@ -81,10 +81,10 @@ def fill_up_weights(up):
 
 class DRNSeg(nn.Module):
     def __init__(self, model_name, classes, pretrained_model=None,
-                 pretrained=True, use_torch_up=False):
+                 pretrained=False, use_torch_up=False):
         super(DRNSeg, self).__init__()
         model = drn.__dict__.get(model_name)(
-            pretrained=pretrained, num_classes=1000)
+            pretrained=pretrained, num_classes=18)
         pmodel = nn.DataParallel(model)
         if pretrained_model is not None:
             pmodel.load_state_dict(pretrained_model)
@@ -532,29 +532,34 @@ def test(eval_data_loader, model, num_classes,
     data_time = AverageMeter()
     end = time.time()
     hist = np.zeros((num_classes, num_classes))
+    
     for iter, (image, label, name) in enumerate(eval_data_loader):
-        data_time.update(time.time() - end)
-        image_var = Variable(image, requires_grad=False, volatile=True)
-        final = model(image_var)[0]
-        _, pred = torch.max(final, 1)
-        pred = pred.cpu().data.numpy()
-        batch_time.update(time.time() - end)
-        if save_vis:
-            save_output_images(pred, name, output_dir)
-            save_colorful_images(
-                pred, name, output_dir + '_color',
-                TRIPLET_PALETTE if num_classes == 3 else CITYSCAPE_PALETTE)
-        if has_gt:
-            label = label.numpy()
-            hist += fast_hist(pred.flatten(), label.flatten(), num_classes)
-            logger.info('===> mAP {mAP:.3f}'.format(
-                mAP=round(np.nanmean(per_class_iu(hist)) * 100, 2)))
-        end = time.time()
-        logger.info('Eval: [{0}/{1}]\t'
-                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                    'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                    .format(iter, len(eval_data_loader), batch_time=batch_time,
-                            data_time=data_time))
+        try:
+            data_time.update(time.time() - end)
+            image_var = Variable(image, requires_grad=False, volatile=True)
+            final = model(image_var)[0]
+            _, pred = torch.max(final, 1)
+            pred = pred.cpu().data.numpy()
+            batch_time.update(time.time() - end)
+            if save_vis:
+                save_output_images(pred, name, output_dir)
+                save_colorful_images(
+                    pred, name, output_dir + '_color',
+                    TRIPLET_PALETTE if num_classes == 3 else CITYSCAPE_PALETTE)
+            if has_gt:
+                label = label.numpy()
+                hist += fast_hist(pred.flatten(), label.flatten(), num_classes)
+                logger.info('===> mAP {mAP:.3f}'.format(
+                    mAP=round(np.nanmean(per_class_iu(hist)) * 100, 2)))
+            end = time.time()
+            logger.info('Eval: [{0}/{1}]\t'
+                        'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                        'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                        .format(iter, len(eval_data_loader), batch_time=batch_time,
+                                data_time=data_time))
+        except Exception as err:
+            print(err)
+            
     if has_gt:  # val
         ious = per_class_iu(hist) * 100
         logger.info(' '.join('{:.03f}'.format(i) for i in ious))
@@ -667,7 +672,7 @@ def test_seg(args):
     model = torch.nn.DataParallel(single_model).cuda()
 
     data_dir = args.data_dir
-    info = json.load(open(join(data_dir, 'info.json'), 'r'))
+    info = json.load(open('info.json', 'r'))
     normalize = transforms.Normalize(mean=info['mean'], std=info['std'])
     scales = [0.5, 0.75, 1.25, 1.5, 1.75]
     if args.ms:
@@ -738,8 +743,8 @@ def parse_args():
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--lr-mode', type=str, default='step')
-    #parser.add_argument('--lr-mode', type=str, default='poly')
+    #parser.add_argument('--lr-mode', type=str, default='step')
+    parser.add_argument('--lr-mode', type=str, default='poly')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.9)')
     parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
@@ -755,10 +760,10 @@ def parse_args():
     parser.add_argument('-j', '--workers', type=int, default=8)
     parser.add_argument('--load-release', dest='load_rel', default=None)
     parser.add_argument('--phase', default='val')
-    #parser.add_argument('--random-scale', default=2, type=float)
-    parser.add_argument('--random-scale', default=0, type=float)
-    #parser.add_argument('--random-rotate', default=10, type=int)
-    parser.add_argument('--random-rotate', default=0, type=int)
+    parser.add_argument('--random-scale', default=2, type=float)
+    #parser.add_argument('--random-scale', default=0, type=float)
+    parser.add_argument('--random-rotate', default=10, type=int)
+    #parser.add_argument('--random-rotate', default=0, type=int)
     parser.add_argument('--bn-sync', default=False, action='store_true')
     parser.add_argument('--ms', action='store_true',
                         help='Turn on multi-scale testing')
